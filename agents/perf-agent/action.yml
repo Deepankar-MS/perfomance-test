@@ -1,0 +1,76 @@
+name: 'perf-agent'
+description: 'Reusable perf agent: patch JMX, run JMeter, parse results and produce metrics'
+author: 'Performance Automation'
+inputs:
+  users:
+    description: 'Number of virtual users'
+    required: false
+    default: '5'
+  duration:
+    description: 'Test duration in seconds'
+    required: false
+    default: '60'
+  jmx_path:
+    description: 'Path to baseline JMX (will be patched)'
+    required: false
+    default: 'tests/jmeter/baseline.jmx'
+  csv_path:
+    description: 'Path to CSV data file to insert'
+    required: false
+    default: 'tests/jmeter/data/params.csv'
+  p95:
+    description: 'p95 threshold in ms'
+    required: false
+    default: '2000'
+  error_rate:
+    description: 'Error rate threshold in percent'
+    required: false
+    default: '1.0'
+outputs:
+  metrics-json-path:
+    description: 'Path to generated metrics.json'
+  report-path:
+    description: 'Path to generated HTML report directory'
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install Python deps
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run perf agent script
+      shell: bash
+      run: |
+        chmod +x agents/perf-agent/run_agent.sh || true
+        ./agents/perf-agent/run_agent.sh \
+          --users "${{ inputs.users }}" \
+          --duration "${{ inputs.duration }}" \
+          --jmx "${{ inputs.jmx_path }}" \
+          --csv "${{ inputs.csv_path }}" \
+          --p95 "${{ inputs.p95 }}" \
+          --error_rate "${{ inputs.error_rate }}"
+    - name: Set outputs
+      if: always()
+      shell: bash
+      run: |
+        METRICS=artifacts/metrics.json
+        REPORT=artifacts/report
+        if [ -f "$METRICS" ]; then
+          echo "metrics-json-path=$METRICS" >> $GITHUB_OUTPUT
+        else
+          echo "metrics-json-path=" >> $GITHUB_OUTPUT
+        fi
+        if [ -d "$REPORT" ]; then
+          echo "report-path=$REPORT" >> $GITHUB_OUTPUT
+        else
+          echo "report-path=" >> $GITHUB_OUTPUT
+        fi

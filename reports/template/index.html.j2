@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Performance Report</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 1rem; }
+      .metric { margin-bottom: 0.5rem }
+    </style>
+  </head>
+  <body>
+    <h1>Performance Report</h1>
+    <div class="metric"><strong>p50 (ms):</strong> {{ summary.p50_ms }}</div>
+    <div class="metric"><strong>p95 (ms):</strong> {{ summary.p95_ms }}</div>
+    <div class="metric"><strong>p99 (ms):</strong> {{ summary.p99_ms }}</div>
+    <div class="metric"><strong>Error rate (%):</strong> {{ summary.error_rate_pct }}</div>
+    <div class="metric"><strong>Samples:</strong> {{ summary.samples }}</div>
+  </body>
+</html>

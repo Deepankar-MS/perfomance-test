@@ -1,0 +1,39 @@
+name: Test Perf Agent
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  perf-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run perf agent composite action
+        uses: ./agents/perf-agent
+        with:
+          users: '3'
+          duration: '30'
+          jmx_path: 'tests/jmeter/baseline.jmx'
+          csv_path: 'tests/jmeter/data/params.csv'
+          p95: '2000'
+          error_rate: '5.0'
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-artifacts
+          path: artifacts
+
+      - name: Post PR comment (if PR)
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            Performance test run summary:
+            - artifacts: see uploaded artifacts in the workflow run.
+            - metrics: `artifacts/metrics.json` (if present)

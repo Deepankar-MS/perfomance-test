@@ -1,0 +1,52 @@
+name: Performance Tests
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Patch JMX
+        run: |
+          python scripts/patch_jmx.py --input tests/jmeter/baseline.jmx --output tests/jmeter/modified.jmx --users ${USERS:-5} --csv tests/jmeter/data/params.csv
+        env:
+          USERS: ${{ github.event.inputs.users || '5' }}
+
+      - name: Run JMeter (Docker)
+        run: |
+          chmod +x ci/run_jmeter.sh
+          USERS=${{ github.event.inputs.users || '5' }}
+          DURATION=${{ github.event.inputs.duration || '60' }}
+          REPORT_DIR=artifacts/report
+          ./ci/run_jmeter.sh
+
+      - name: Parse results and check thresholds
+        run: |
+          python scripts/parse_results.py --input artifacts/results.jtl --output artifacts/metrics.json --p95 ${P95_MS:-2000} --error_rate ${ERROR_RATE:-1.0}
+        env:
+          P95_MS: ${{ github.event.inputs.p95_ms || '2000' }}
+          ERROR_RATE: ${{ github.event.inputs.error_rate || '1.0' }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-artifacts
+          path: artifacts
